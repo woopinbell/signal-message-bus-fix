@@ -14,5 +14,6 @@
 void	mt_putstr_fd(const char *text, int fd);
 void	mt_putnbr_fd(pid_t number, int fd);
 size_t	mt_strlen(const char *text);
+int		mt_parse_pid(const char *text, pid_t *pid);
 
 #endif
