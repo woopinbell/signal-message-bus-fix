@@ -5,6 +5,14 @@
 static volatile sig_atomic_t	g_current_byte;
 static volatile sig_atomic_t	g_received_bits;
 
+static void	flush_byte(unsigned char output)
+{
+	if (output == '\0')
+		write(STDOUT_FILENO, "\n", 1);
+	else
+		write(STDOUT_FILENO, &output, 1);
+}
+
 static void	handle_bit(int signal, siginfo_t *info, void *context)
 {
 	unsigned char	output;
@@ -19,7 +27,7 @@ static void	handle_bit(int signal, siginfo_t *info, void *context)
 	if (g_received_bits == 8)
 	{
 		output = (unsigned char)g_current_byte;
-		write(STDOUT_FILENO, &output, 1);
+		flush_byte(output);
 		g_current_byte = 0;
 		g_received_bits = 0;
 	}

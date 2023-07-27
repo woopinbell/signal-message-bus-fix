@@ -54,5 +54,10 @@ int	main(int argc, char **argv)
 		}
 		index++;
 	}
+	if (send_byte(server_pid, '\0') == -1)
+	{
+		mt_putstr_fd("client: failed to finish message\n", STDERR_FILENO);
+		return (1);
+	}
 	return (0);
 }
