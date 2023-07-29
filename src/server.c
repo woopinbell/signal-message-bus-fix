@@ -31,6 +31,7 @@ static void	handle_bit(int signal, siginfo_t *info, void *context)
 		g_current_byte = 0;
 		g_received_bits = 0;
 	}
+	kill(info->si_pid, MT_ACK_SIGNAL);
 }
 
 static int	install_signal_handlers(void)
