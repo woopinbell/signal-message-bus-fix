@@ -4,11 +4,15 @@
 
 static volatile sig_atomic_t	g_current_byte;
 static volatile sig_atomic_t	g_received_bits;
+static volatile sig_atomic_t	g_client_pid;
 
 static void	flush_byte(unsigned char output)
 {
 	if (output == '\0')
+	{
 		write(STDOUT_FILENO, "\n", 1);
+		g_client_pid = 0;
+	}
 	else
 		write(STDOUT_FILENO, &output, 1);
 }
@@ -20,6 +24,13 @@ static void	handle_bit(int signal, siginfo_t *info, void *context)
 	(void)context;
 	if (info == NULL || info->si_pid <= 0)
 		return ;
+	if (g_client_pid != 0 && g_client_pid != info->si_pid)
+	{
+		kill(info->si_pid, MT_NACK_SIGNAL);
+		return ;
+	}
+	if (g_client_pid == 0)
+		g_client_pid = info->si_pid;
 	g_current_byte <<= 1;
 	if (signal == MT_ONE_SIGNAL)
 		g_current_byte |= 1;
