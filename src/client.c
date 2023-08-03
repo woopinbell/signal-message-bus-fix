@@ -56,6 +56,7 @@ static int	send_bit(pid_t server_pid, int bit, const sigset_t *old_mask)
 		return (SEND_REJECTED);
 	if (g_timed_out)
 		return (SEND_TIMEOUT);
+	usleep(MT_SIGNAL_GAP_US);
 	return (0);
 }
 
