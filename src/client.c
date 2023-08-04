@@ -1,5 +1,7 @@
 #include "minitalk.h"
 
+#include <errno.h>
+#include <time.h>
 #include <unistd.h>
 
 #define SEND_ERROR 1
@@ -9,6 +11,16 @@
 static volatile sig_atomic_t	g_ack_received;
 static volatile sig_atomic_t	g_timed_out;
 static volatile sig_atomic_t	g_rejected;
+
+static void	wait_signal_gap(void)
+{
+	struct timespec	remaining;
+
+	remaining.tv_sec = 0;
+	remaining.tv_nsec = MT_SIGNAL_GAP_US * 1000L;
+	while (nanosleep(&remaining, &remaining) == -1 && errno == EINTR)
+		;
+}
 
 static void	handle_client_signal(int signal)
 {
@@ -56,7 +68,7 @@ static int	send_bit(pid_t server_pid, int bit, const sigset_t *old_mask)
 		return (SEND_REJECTED);
 	if (g_timed_out)
 		return (SEND_TIMEOUT);
-	usleep(MT_SIGNAL_GAP_US);
+	wait_signal_gap();
 	return (0);
 }
 
