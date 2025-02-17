@@ -6,7 +6,7 @@ CFLAGS := -Wall -Wextra -Werror -Iinclude
 RM := rm -rf
 OBJ_DIR := obj
 
-COMMON_SRC := src/write_utils.c
+COMMON_SRC := src/write_utils.c src/parse_pid.c
 SERVER_SRC := src/server.c $(COMMON_SRC)
 CLIENT_SRC := src/client.c $(COMMON_SRC)
 
