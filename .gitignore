@@ -1,0 +1,9 @@
+*.o
+*.d
+server
+client
+obj/
+tests/.expected.out
+tests/.server.out
+tests/.client.err
+
