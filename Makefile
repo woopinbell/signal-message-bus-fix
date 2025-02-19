@@ -36,4 +36,4 @@ fclean: clean
 re: fclean all
 
 test: all
-	@printf 'tests are added in a later step\n'
+	sh tests/smoke.sh
