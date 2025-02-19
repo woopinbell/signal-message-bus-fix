@@ -37,10 +37,24 @@ if ! kill -0 "$SERVER_PID" 2>/dev/null; then
 fi
 
 "$ROOT/client" "$SERVER_PID" "hello"
+"$ROOT/client" "$SERVER_PID" ""
+"$ROOT/client" "$SERVER_PID" "안녕하세요"
+LONG_MESSAGE=$(awk 'BEGIN { for (i = 0; i < 2048; i++) printf "x" }')
+"$ROOT/client" "$SERVER_PID" "$LONG_MESSAGE"
+"$ROOT/client" "$SERVER_PID" "last message"
+
+if "$ROOT/client" 1 "bad pid" 2>"$ERR"; then
+	printf 'client accepted an invalid pid\n' >&2
+	exit 1
+fi
 
 {
 	printf '%s\n' "$SERVER_PID"
 	printf 'hello\n'
+	printf '\n'
+	printf '안녕하세요\n'
+	printf '%s\n' "$LONG_MESSAGE"
+	printf 'last message\n'
 } >"$EXPECTED"
 
 diff -u "$EXPECTED" "$OUT"
