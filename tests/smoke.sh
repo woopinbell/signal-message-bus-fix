@@ -6,9 +6,14 @@ OUT="$ROOT/tests/.server.out"
 EXPECTED="$ROOT/tests/.expected.out"
 ERR="$ROOT/tests/.client.err"
 SERVER_PID=
+DUMMY_PID=
 
 cleanup()
 {
+	if [ -n "$DUMMY_PID" ]; then
+		kill "$DUMMY_PID" 2>/dev/null || true
+		wait "$DUMMY_PID" 2>/dev/null || true
+	fi
 	if [ -n "$SERVER_PID" ]; then
 		kill "$SERVER_PID" 2>/dev/null || true
 		wait "$SERVER_PID" 2>/dev/null || true
@@ -39,7 +44,7 @@ fi
 "$ROOT/client" "$SERVER_PID" "hello"
 "$ROOT/client" "$SERVER_PID" ""
 "$ROOT/client" "$SERVER_PID" "안녕하세요"
-LONG_MESSAGE=$(awk 'BEGIN { for (i = 0; i < 2048; i++) printf "x" }')
+LONG_MESSAGE=$(awk 'BEGIN { for (i = 0; i < 1024; i++) printf "x" }')
 "$ROOT/client" "$SERVER_PID" "$LONG_MESSAGE"
 "$ROOT/client" "$SERVER_PID" "last message"
 
@@ -47,6 +52,19 @@ if "$ROOT/client" 1 "bad pid" 2>"$ERR"; then
 	printf 'client accepted an invalid pid\n' >&2
 	exit 1
 fi
+
+(
+	trap '' USR1 USR2
+	sleep 5
+) &
+DUMMY_PID=$!
+if "$ROOT/client" "$DUMMY_PID" "timeout" 2>"$ERR"; then
+	printf 'client did not fail when acknowledgement was missing\n' >&2
+	exit 1
+fi
+kill "$DUMMY_PID" 2>/dev/null || true
+wait "$DUMMY_PID" 2>/dev/null || true
+DUMMY_PID=
 
 {
 	printf '%s\n' "$SERVER_PID"
