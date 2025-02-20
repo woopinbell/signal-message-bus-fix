@@ -3,7 +3,8 @@
 server
 client
 obj/
+tests/masked_exec
+tests/session_sender
 tests/.expected.out
 tests/.server.out
 tests/.client.err
-
