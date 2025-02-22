@@ -94,7 +94,7 @@ int	main(int argc, char **argv)
 {
 	pid_t	server_pid;
 	sigset_t	blocked;
-	sigset_t	old_mask;
+	sigset_t	wait_mask;
 	int		status;
 	size_t	index;
 
@@ -118,22 +118,25 @@ int	main(int argc, char **argv)
 	sigaddset(&blocked, MT_ACK_SIGNAL);
 	sigaddset(&blocked, MT_NACK_SIGNAL);
 	sigaddset(&blocked, SIGALRM);
-	if (sigprocmask(SIG_BLOCK, &blocked, &old_mask) == -1)
+	if (sigprocmask(SIG_BLOCK, &blocked, &wait_mask) == -1)
 	{
 		mt_putstr_fd("client: failed to block acknowledgement signal\n",
 			STDERR_FILENO);
 		return (1);
 	}
+	sigdelset(&wait_mask, MT_ACK_SIGNAL);
+	sigdelset(&wait_mask, MT_NACK_SIGNAL);
+	sigdelset(&wait_mask, SIGALRM);
 	index = 0;
 	while (argv[2][index] != '\0')
 	{
 		status = send_byte(server_pid, (unsigned char)argv[2][index],
-				&old_mask);
+				&wait_mask);
 		if (status != 0)
 			return (report_send_status(status));
 		index++;
 	}
-	status = send_byte(server_pid, '\0', &old_mask);
+	status = send_byte(server_pid, '\0', &wait_mask);
 	if (status != 0)
 		return (report_send_status(status));
 	return (0);
