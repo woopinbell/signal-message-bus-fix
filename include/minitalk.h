@@ -10,7 +10,7 @@
 # define MT_ACK_SIGNAL SIGUSR1
 # define MT_NACK_SIGNAL SIGUSR2
 # define MT_ACK_TIMEOUT_SECONDS 3
-# define MT_SIGNAL_GAP_US 500
+# define MT_SIGNAL_GAP_US 5000
 
 void	mt_putstr_fd(const char *text, int fd);
 void	mt_putnbr_fd(pid_t number, int fd);
