@@ -2,13 +2,14 @@ NAME_SERVER := server
 NAME_CLIENT := client
 NAME_SESSION_SENDER := tests/session_sender
 NAME_MASKED_EXEC := tests/masked_exec
+NAME_RESPONSE_SERVER := tests/response_server
 
 CC := cc
 CFLAGS := -Wall -Wextra -Werror -Iinclude
 RM := rm -rf
 OBJ_DIR := obj
 
-COMMON_SRC := src/write_utils.c src/parse_pid.c
+COMMON_SRC := src/write_utils.c src/parse_pid.c src/response_channel.c
 SERVER_SRC := src/server.c $(COMMON_SRC)
 CLIENT_SRC := src/client.c $(COMMON_SRC)
 
@@ -17,6 +18,7 @@ SERVER_OBJ := $(OBJ_DIR)/src/server.o $(COMMON_OBJ)
 CLIENT_OBJ := $(OBJ_DIR)/src/client.o $(COMMON_OBJ)
 SESSION_SENDER_OBJ := $(OBJ_DIR)/tests/session_sender.o $(COMMON_OBJ)
 MASKED_EXEC_OBJ := $(OBJ_DIR)/tests/masked_exec.o
+RESPONSE_SERVER_OBJ := $(OBJ_DIR)/tests/response_server.o $(COMMON_OBJ)
 
 .PHONY: all clean fclean re test
 
@@ -34,6 +36,9 @@ $(NAME_SESSION_SENDER): $(SESSION_SENDER_OBJ)
 $(NAME_MASKED_EXEC): $(MASKED_EXEC_OBJ)
 	$(CC) $(CFLAGS) $(MASKED_EXEC_OBJ) -o $@
 
+$(NAME_RESPONSE_SERVER): $(RESPONSE_SERVER_OBJ)
+	$(CC) $(CFLAGS) $(RESPONSE_SERVER_OBJ) -o $@
+
 $(OBJ_DIR)/%.o: %.c include/minitalk.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -43,10 +48,11 @@ clean:
 
 fclean: clean
 	$(RM) $(NAME_SERVER) $(NAME_CLIENT) $(NAME_SESSION_SENDER) \
-		$(NAME_MASKED_EXEC)
+		$(NAME_MASKED_EXEC) $(NAME_RESPONSE_SERVER)
 
 re: fclean all
 
-test: all $(NAME_SESSION_SENDER) $(NAME_MASKED_EXEC)
+test: all $(NAME_SESSION_SENDER) $(NAME_MASKED_EXEC) $(NAME_RESPONSE_SERVER)
 	sh tests/smoke.sh
 	sh tests/session_ownership.sh
+	sh tests/response_validation.sh

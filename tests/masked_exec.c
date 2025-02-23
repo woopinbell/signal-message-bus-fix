@@ -62,9 +62,8 @@ int	main(int argc, char **argv)
 	if (argc < 2)
 		return (1);
 	sigemptyset(&blocked);
-	sigaddset(&blocked, MT_ACK_SIGNAL);
-	sigaddset(&blocked, MT_NACK_SIGNAL);
-	sigaddset(&blocked, SIGALRM);
+	sigaddset(&blocked, MT_ZERO_SIGNAL);
+	sigaddset(&blocked, MT_ONE_SIGNAL);
 	if (sigprocmask(SIG_BLOCK, &blocked, &old_mask) == -1)
 		return (1);
 	child = fork();

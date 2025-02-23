@@ -8,9 +8,8 @@ EXPECTED="$TEST_TMP/expected.out"
 SERVER_ERR="$TEST_TMP/server.err"
 CLIENT_ERR="$TEST_TMP/client.err"
 INVALID_ERR="$TEST_TMP/invalid.err"
-TIMEOUT_ERR="$TEST_TMP/timeout.err"
+UNRELATED_ERR="$TEST_TMP/unrelated.err"
 EXPECTED_INVALID_ERR="$TEST_TMP/expected-invalid.err"
-EXPECTED_TIMEOUT_ERR="$TEST_TMP/expected-timeout.err"
 DUMMY_READY="$TEST_TMP/dummy.ready"
 SERVER_PID=
 DUMMY_PID=
@@ -102,25 +101,23 @@ DUMMY_PID=$!
 tries=0
 while [ "$tries" -lt 50 ] && ! grep -qx 'ready' "$DUMMY_READY"; do
 	if ! kill -0 "$DUMMY_PID" 2>/dev/null; then
-		printf 'non-acking process exited before becoming ready\n' >&2
+		printf 'unrelated process exited before becoming ready\n' >&2
 		exit 1
 	fi
 	tries=$((tries + 1))
 	sleep 0.1
 done
 if ! grep -qx 'ready' "$DUMMY_READY"; then
-	printf 'non-acking process did not become ready\n' >&2
+	printf 'unrelated process did not become ready\n' >&2
 	exit 1
 fi
-if "$ROOT/client" "$DUMMY_PID" "timeout" 2>"$TIMEOUT_ERR"; then
-	printf 'client did not fail when acknowledgement was missing\n' >&2
+if "$ROOT/client" "$DUMMY_PID" "unrelated" 2>"$UNRELATED_ERR"; then
+	printf 'client accepted a process without a server socket\n' >&2
 	exit 1
 fi
-printf 'client: timed out waiting for acknowledgement\n' \
-	>"$EXPECTED_TIMEOUT_ERR"
-diff -u "$EXPECTED_TIMEOUT_ERR" "$TIMEOUT_ERR"
+diff -u "$EXPECTED_INVALID_ERR" "$UNRELATED_ERR"
 if ! kill -0 "$DUMMY_PID" 2>/dev/null; then
-	printf 'non-acking process died during timeout verification\n' >&2
+	printf 'unrelated process died during server identity verification\n' >&2
 	exit 1
 fi
 kill "$DUMMY_PID" 2>/dev/null || true
