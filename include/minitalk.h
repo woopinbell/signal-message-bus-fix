@@ -39,6 +39,7 @@ void	mt_putstr_fd(const char *text, int fd);
 void	mt_putnbr_fd(pid_t number, int fd);
 size_t	mt_strlen(const char *text);
 int		mt_parse_pid(const char *text, pid_t *pid);
+int		mt_write_all(int fd, const void *buffer, size_t size);
 int		mt_runtime_dir(char *buffer, size_t size);
 int		mt_response_path(char *buffer, size_t size, const char *role,
 			pid_t pid);

@@ -1,5 +1,7 @@
 #include "minitalk.h"
 
+#include <limits.h>
+
 static int	mt_is_digit(char character)
 {
 	return (character >= '0' && character <= '9');
@@ -8,6 +10,7 @@ static int	mt_is_digit(char character)
 int	mt_parse_pid(const char *text, pid_t *pid)
 {
 	long	value;
+	int		digit;
 	size_t	index;
 
 	if (text == NULL || text[0] == '\0' || pid == NULL)
@@ -18,13 +21,14 @@ int	mt_parse_pid(const char *text, pid_t *pid)
 	{
 		if (!mt_is_digit(text[index]))
 			return (0);
-		value = value * 10 + (text[index] - '0');
-		if (value > 999999)
+		digit = text[index] - '0';
+		if (value > (INT_MAX - digit) / 10)
 			return (0);
+		value = value * 10 + digit;
 		index++;
 	}
 	if (value <= 1)
 		return (0);
 	*pid = (pid_t)value;
-	return (1);
+	return ((long)*pid == value);
 }

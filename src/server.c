@@ -49,29 +49,31 @@ static void	cleanup_server(void)
 	g_server_path[0] = '\0';
 }
 
-static void	reset_session(int close_partial_line)
+static int	reset_session(int close_partial_line)
 {
-	if (close_partial_line && g_line_started)
-		write(STDOUT_FILENO, "\n", 1);
+	if (close_partial_line && g_line_started
+		&& mt_write_all(STDOUT_FILENO, "\n", 1) == -1)
+		return (-1);
 	g_current_byte = 0;
 	g_received_bits = 0;
 	g_client_pid = 0;
 	g_line_started = 0;
 	g_sequence = 0;
+	return (0);
 }
 
-static void	flush_byte(unsigned char output)
+static int	flush_byte(unsigned char output)
 {
 	if (output == '\0')
 	{
-		write(STDOUT_FILENO, "\n", 1);
-		reset_session(0);
+		if (mt_write_all(STDOUT_FILENO, "\n", 1) == -1)
+			return (-1);
+		return (reset_session(0));
 	}
-	else
-	{
-		write(STDOUT_FILENO, &output, 1);
-		g_line_started = 1;
-	}
+	if (mt_write_all(STDOUT_FILENO, &output, 1) == -1)
+		return (-1);
+	g_line_started = 1;
+	return (0);
 }
 
 static void	handle_bit(int signal, siginfo_t *info, void *context)
@@ -166,6 +168,11 @@ static int	install_signal_handlers(void)
 {
 	struct sigaction	action;
 
+	memset(&action, 0, sizeof(action));
+	action.sa_handler = SIG_IGN;
+	sigemptyset(&action.sa_mask);
+	if (sigaction(SIGPIPE, &action, NULL) == -1)
+		return (-1);
 	memset(&action, 0, sizeof(action));
 	action.sa_sigaction = handle_bit;
 	sigemptyset(&action.sa_mask);
@@ -276,7 +283,10 @@ static int	handle_session_request(void)
 	if (g_client_pid != 0 && g_client_pid != request.client_pid)
 	{
 		if (kill(g_client_pid, 0) == -1 && errno == ESRCH)
-			reset_session(1);
+		{
+			if (reset_session(1) == -1)
+				return (-1);
+		}
 		else
 			status = MT_RESPONSE_BUSY;
 	}
@@ -286,8 +296,8 @@ static int	handle_session_request(void)
 		new_owner = 1;
 	}
 	if (send_response(request.client_pid, MT_RESPONSE_READY, request.nonce,
-			status) == -1 && new_owner)
-		reset_session(0);
+			status) == -1 && new_owner && reset_session(0) == -1)
+		return (-1);
 	return (0);
 }
 
@@ -329,16 +339,19 @@ static int	process_bit(const t_bit_event *event)
 	if (g_received_bits == 8)
 	{
 		output = g_current_byte;
-		flush_byte(output);
+		if (flush_byte(output) == -1)
+			return (-1);
 		g_current_byte = 0;
 		g_received_bits = 0;
 	}
 	if (g_client_pid != 0)
 		g_sequence++;
-	if (send_response(event->sender, MT_RESPONSE_ACK, sequence, MT_RESPONSE_OK) == -1)
+	if (send_response(event->sender, MT_RESPONSE_ACK, sequence,
+			MT_RESPONSE_OK) == -1)
 	{
-		if (event->sender == g_client_pid)
-			reset_session(1);
+		if (event->sender == g_client_pid
+			&& reset_session(1) == -1)
+			return (-1);
 	}
 	return (0);
 }
@@ -380,6 +393,24 @@ static int	run_event_loop(void)
 	}
 }
 
+static int	write_pid_line(pid_t pid)
+{
+	char	buffer[32];
+	size_t	index;
+	long	value;
+
+	index = sizeof(buffer);
+	buffer[--index] = '\n';
+	value = (long)pid;
+	while (value > 0)
+	{
+		buffer[--index] = (char)('0' + value % 10);
+		value /= 10;
+	}
+	return (mt_write_all(STDOUT_FILENO, buffer + index,
+		sizeof(buffer) - index));
+}
+
 int	main(void)
 {
 	if (prepare_response_channel() == -1 || atexit(cleanup_server) != 0)
@@ -395,8 +426,11 @@ int	main(void)
 			STDERR_FILENO);
 		return (1);
 	}
-	mt_putnbr_fd(getpid(), STDOUT_FILENO);
-	write(STDOUT_FILENO, "\n", 1);
+	if (write_pid_line(getpid()) == -1)
+	{
+		mt_putstr_fd("server: failed to publish pid\n", STDERR_FILENO);
+		return (1);
+	}
 	if (run_event_loop() == -1)
 	{
 		mt_putstr_fd("server: signal event channel failed\n", STDERR_FILENO);
