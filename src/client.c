@@ -30,15 +30,6 @@ static void	cleanup_response_socket(void)
 	g_client_path[0] = '\0';
 }
 
-static void	wait_signal_gap(void)
-{
-	struct timespec	remaining;
-
-	remaining.tv_sec = 0;
-	remaining.tv_nsec = MT_SIGNAL_GAP_US * 1000L;
-	while (nanosleep(&remaining, &remaining) == -1 && errno == EINTR)
-		;
-}
 
 static int	set_nonblocking_close_on_exec(int fd)
 {
@@ -284,7 +275,6 @@ static int	send_bit(pid_t server_pid, int bit, uint32_t sequence,
 			server_path, &deadline);
 	if (status != 0)
 		return (status);
-	wait_signal_gap();
 	return (0);
 }
 

@@ -132,7 +132,6 @@ static int	request_session(pid_t server_pid, const char *server_path)
 static int	send_bit(pid_t server_pid, int bit, uint32_t sequence,
 		const char *server_path)
 {
-	struct timespec	gap;
 	int				signal;
 
 	signal = MT_ZERO_SIGNAL;
@@ -141,10 +140,6 @@ static int	send_bit(pid_t server_pid, int bit, uint32_t sequence,
 	if (kill(server_pid, signal) == -1
 		|| wait_for_response(server_pid, MT_RESPONSE_ACK, sequence, server_path) == -1)
 		return (-1);
-	gap.tv_sec = 0;
-	gap.tv_nsec = MT_SIGNAL_GAP_US * 1000L;
-	while (nanosleep(&gap, &gap) == -1 && errno == EINTR)
-		;
 	return (0);
 }
 
