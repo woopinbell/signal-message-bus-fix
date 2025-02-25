@@ -110,3 +110,26 @@ fi
 [ "$(wc -l <"$NEWLINE_OUT")" -eq 1 ]
 grep -qx 'server: signal event channel failed' "$NEWLINE_ERR"
 grep -qx 'client: timed out waiting for acknowledgement' "$NEWLINE_CLIENT_ERR"
+
+RECOVERY_OUT="$TEST_TMP/recovery.out"
+RECOVERY_ERR="$TEST_TMP/recovery.err"
+RECOVERY_CLIENT_ERR="$TEST_TMP/recovery-client.err"
+MT_TEST_FAIL_NEWLINE_NUMBER=2 MT_TEST_FAIL_EPIPE=1 \
+	"$ROOT/tests/fault_server" >"$RECOVERY_OUT" 2>"$RECOVERY_ERR" &
+SERVER_PID=$!
+wait_ready "$RECOVERY_OUT"
+"$ROOT/tests/session_sender" "$SERVER_PID" partial
+recovery_client_status=0
+"$ROOT/client" "$SERVER_PID" recovered 2>"$RECOVERY_CLIENT_ERR" \
+	|| recovery_client_status=$?
+recovery_server_status=0
+wait "$SERVER_PID" || recovery_server_status=$?
+SERVER_PID=
+if [ "$recovery_client_status" -eq 0 ] || [ "$recovery_server_status" -eq 0 ]; then
+	printf 'abandoned partial-line recovery failure was acknowledged\n' >&2
+	exit 1
+fi
+[ "$(wc -l <"$RECOVERY_OUT")" -eq 1 ]
+grep -qx 'server: signal event channel failed' "$RECOVERY_ERR"
+grep -qx 'client: timed out waiting for acknowledgement' \
+	"$RECOVERY_CLIENT_ERR"

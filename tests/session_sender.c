@@ -189,15 +189,14 @@ int	main(int argc, char **argv)
 		if (send_bit(server_pid, 0, sequence, server_path) == -1)
 			return (1);
 	}
-	else if (strcmp(argv[2], "partial") == 0
-		|| strcmp(argv[2], "hold") == 0)
+	else if (strcmp(argv[2], "partial") == 0)
 	{
 		if (send_partial(server_pid, &sequence, server_path) == -1)
 			return (1);
 	}
-	else
+	else if (strcmp(argv[2], "reserve") != 0)
 		return (1);
-	if (strcmp(argv[2], "hold") == 0)
+	if (strcmp(argv[2], "reserve") == 0)
 	{
 		write(STDOUT_FILENO, "ready\n", 6);
 		while (1)

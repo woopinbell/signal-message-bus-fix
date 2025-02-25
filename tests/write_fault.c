@@ -101,3 +101,16 @@ ssize_t	mt_test_write(int fd, const void *buffer, size_t size)
 		size = g_max_write;
 	return (write(fd, buffer, size));
 }
+
+ssize_t	mt_test_event_write(int fd, const void *buffer, size_t size)
+{
+	static int	failed;
+
+	if (!failed && read_number("MT_TEST_EVENT_EAGAIN", 0) == 1)
+	{
+		failed = 1;
+		errno = EAGAIN;
+		return (-1);
+	}
+	return (write(fd, buffer, size));
+}

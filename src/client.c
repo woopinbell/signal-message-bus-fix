@@ -19,14 +19,16 @@
 
 static int	g_response_socket = -1;
 static char	g_client_path[MT_RESPONSE_PATH_SIZE];
+static int	g_client_bound;
 
 static void	cleanup_response_socket(void)
 {
 	if (g_response_socket != -1)
 		close(g_response_socket);
 	g_response_socket = -1;
-	if (g_client_path[0] != '\0')
+	if (g_client_bound && g_client_path[0] != '\0')
 		unlink(g_client_path);
+	g_client_bound = 0;
 	g_client_path[0] = '\0';
 }
 
@@ -98,6 +100,7 @@ static int	bind_client_socket(void)
 	if (bind(g_response_socket, (struct sockaddr *)&address,
 			sizeof(address)) == -1)
 		return (-1);
+	g_client_bound = 1;
 	return (0);
 }
 

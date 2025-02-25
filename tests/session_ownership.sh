@@ -72,7 +72,7 @@ if ! "$ROOT/client" "$SERVER_PID" "line recovered" 2>>"$CLIENT_ERR"; then
 fi
 
 : >"$READY"
-"$ROOT/tests/session_sender" "$SERVER_PID" hold >"$READY" &
+"$ROOT/tests/session_sender" "$SERVER_PID" reserve >"$READY" &
 HOLDER_PID=$!
 tries=0
 while [ "$tries" -lt 50 ]; do
@@ -80,14 +80,14 @@ while [ "$tries" -lt 50 ]; do
 		break
 	fi
 	if ! kill -0 "$HOLDER_PID" 2>/dev/null; then
-		printf 'session holder exited before becoming ready\n' >&2
+		printf 'session reserver exited before becoming ready\n' >&2
 		exit 1
 	fi
 	tries=$((tries + 1))
 	sleep 0.1
 done
 if ! grep -qx 'ready' "$READY"; then
-	printf 'session holder did not become ready\n' >&2
+	printf 'session reserver did not become ready\n' >&2
 	exit 1
 fi
 
@@ -103,8 +103,8 @@ diff -u "$BEFORE_BUSY" "$OUT"
 kill "$HOLDER_PID"
 wait "$HOLDER_PID" 2>/dev/null || true
 HOLDER_PID=
-if ! "$ROOT/client" "$SERVER_PID" "holder recovered" 2>>"$CLIENT_ERR"; then
-	printf 'server did not recover after the live owner exited\n' >&2
+if ! "$ROOT/client" "$SERVER_PID" "reservation recovered" 2>>"$CLIENT_ERR"; then
+	printf 'server did not recover after the live reserved owner exited\n' >&2
 	cat "$CLIENT_ERR" >&2
 	exit 1
 fi
@@ -134,8 +134,7 @@ fi
 	printf 'bit recovered\n'
 	printf 'X\n'
 	printf 'line recovered\n'
-	printf 'X\n'
-	printf 'holder recovered\n'
+	printf 'reservation recovered\n'
 	printf 'masked ack\n'
 } >"$EXPECTED"
 

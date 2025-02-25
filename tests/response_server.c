@@ -142,6 +142,27 @@ static int	send_response(int socket_fd, pid_t client_pid,
 	return (0);
 }
 
+static int	send_oversized_response(int socket_fd, pid_t client_pid,
+		const t_mt_response *response)
+{
+	unsigned char		payload[sizeof(*response) + 1];
+	struct sockaddr_un	address;
+	char				path[MT_RESPONSE_PATH_SIZE];
+
+	if (mt_response_path(path, sizeof(path), "client", client_pid) == -1)
+		return (-1);
+	memset(&address, 0, sizeof(address));
+	address.sun_family = AF_UNIX;
+	memcpy(address.sun_path, path, mt_strlen(path) + 1);
+	memcpy(payload, response, sizeof(*response));
+	payload[sizeof(*response)] = 0xa5;
+	if (sendto(socket_fd, payload, sizeof(payload), 0,
+			(struct sockaddr *)&address, sizeof(address))
+		!= (ssize_t)sizeof(payload))
+		return (-1);
+	return (0);
+}
+
 static int	reply_with_invalid_events(pid_t client_pid, uint32_t kind,
 		uint32_t token)
 {
@@ -153,7 +174,8 @@ static int	reply_with_invalid_events(pid_t client_pid, uint32_t kind,
 	response.token = token;
 	response.status = MT_RESPONSE_OK;
 	response.server_pid = getpid();
-	if (send_response(g_forger_socket, client_pid, &response) == -1)
+	if (send_response(g_forger_socket, client_pid, &response) == -1
+		|| send_oversized_response(g_server_socket, client_pid, &response) == -1)
 		return (-1);
 	response.token = token + 1;
 	if (send_response(g_server_socket, client_pid, &response) == -1)
@@ -200,6 +222,42 @@ static int	receive_session_request(t_mt_request *request)
 	return (0);
 }
 
+static int	flood_invalid_responses(pid_t client_pid, uint32_t token)
+{
+	struct sockaddr_un	address;
+	struct timespec		pause_time;
+	t_mt_response		response;
+	struct stat			info;
+	char				path[MT_RESPONSE_PATH_SIZE];
+	int					tries;
+
+	if (mt_response_path(path, sizeof(path), "client", client_pid) == -1
+		|| set_nonblocking(g_server_socket) == -1)
+		return (-1);
+	memset(&address, 0, sizeof(address));
+	address.sun_family = AF_UNIX;
+	memcpy(address.sun_path, path, mt_strlen(path) + 1);
+	response.magic = MT_RESPONSE_MAGIC;
+	response.kind = MT_RESPONSE_READY;
+	response.token = token + 1;
+	response.status = MT_RESPONSE_OK;
+	response.server_pid = getpid();
+	tries = 0;
+	while (tries < 100000 && lstat(path, &info) == 0)
+	{
+		(void)sendto(g_server_socket, &response, sizeof(response), 0,
+				(struct sockaddr *)&address, sizeof(address));
+		pause_time.tv_sec = 0;
+		pause_time.tv_nsec = 100000L;
+		while (nanosleep(&pause_time, &pause_time) == -1 && errno == EINTR)
+			;
+		tries++;
+	}
+	if (lstat(path, &info) == -1 && errno == ENOENT)
+		return (0);
+	return (-1);
+}
+
 static void	wait_for_client_cleanup(pid_t client_pid)
 {
 	struct timespec	pause_time;
@@ -234,8 +292,15 @@ int	main(void)
 		return (1);
 	mt_putnbr_fd(getpid(), STDOUT_FILENO);
 	write(STDOUT_FILENO, "\n", 1);
-	if (receive_session_request(&request) == -1
-		|| reply_with_invalid_events(request.client_pid, MT_RESPONSE_READY,
+	if (receive_session_request(&request) == -1)
+		return (1);
+	if (getenv("MT_TEST_INVALID_FLOOD") != NULL)
+	{
+		if (flood_invalid_responses(request.client_pid, request.nonce) == -1)
+			return (1);
+		return (0);
+	}
+	if (reply_with_invalid_events(request.client_pid, MT_RESPONSE_READY,
 			request.nonce) == -1)
 		return (1);
 	sequence = 0;
